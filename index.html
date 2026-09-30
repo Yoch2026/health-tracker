@@ -300,7 +300,7 @@
 
             <!-- OCR Photo -->
             <div class="ocr-photo-area" id="ocrPhotoArea">
-                <input type="file" id="ocrPhotoInput" accept="image/*" onchange="handleOCRPhoto(event)">
+                <input type="file" id="ocrPhotoInput" accept="image/*"  capture="environment" onchange="handleOCRPhoto(event)">
                 <div id="ocrPlaceholder">
                     <div style="font-size:2.5rem;margin-bottom:8px">📷</div>
                     <div style="font-size:0.85rem;font-weight:600;color:var(--primary)">ถ่ายรูปเครื่องวัดความดัน</div>
