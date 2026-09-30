@@ -5,574 +5,249 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Health Tracker</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src='https://unpkg.com/tesseract.js@4/dist/tesseract.min.js'></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-
         :root {
-            --primary: #4f46e5;
-            --primary-light: #eef2ff;
-            --secondary: #db2777;
-            --success: #059669;
-            --success-light: #ecfdf5;
-            --warning: #d97706;
-            --warning-light: #fffbeb;
-            --danger: #dc2626;
-            --danger-light: #fef2f2;
-            --bg: #f1f5f9;
-            --card: #ffffff;
-            --card2: #f8fafc;
-            --text: #1e293b;
-            --text-muted: #64748b;
-            --border: #e2e8f0;
-            --shadow: 0 1px 8px rgba(0,0,0,0.08);
+            --primary: #4f46e5; --primary-light: #eef2ff;
+            --secondary: #db2777; --success: #059669;
+            --success-light: #ecfdf5; --warning: #d97706;
+            --warning-light: #fffbeb; --danger: #dc2626;
+            --danger-light: #fef2f2; --bg: #f1f5f9;
+            --card: #ffffff; --card2: #f8fafc;
+            --text: #1e293b; --text-muted: #64748b;
+            --border: #e2e8f0; --shadow: 0 1px 8px rgba(0,0,0,0.08);
             --shadow-md: 0 4px 16px rgba(0,0,0,0.1);
         }
+        body { font-family: 'Segoe UI',-apple-system,sans-serif; background:var(--bg); color:var(--text); min-height:100vh; }
 
-        body {
-            font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
-            background: var(--bg);
-            color: var(--text);
-            min-height: 100vh;
-            min-height: -webkit-fill-available;
-        }
+        .header { background:linear-gradient(135deg,#4f46e5,#7c3aed,#db2777); padding:18px 16px 16px; text-align:center; position:sticky; top:0; z-index:100; box-shadow:0 2px 12px rgba(79,70,229,0.3); }
+        .header h1 { font-size:1.35rem; font-weight:700; color:white; }
+        .header p { font-size:0.75rem; color:rgba(255,255,255,0.85); margin-top:2px; }
 
-        /* ===== HEADER ===== */
-        .header {
-            background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 50%, #db2777 100%);
-            padding: 18px 16px 16px;
-            text-align: center;
-            position: sticky;
-            top: 0;
-            z-index: 100;
-            box-shadow: 0 2px 12px rgba(79,70,229,0.3);
-        }
-        .header h1 { font-size: 1.35rem; font-weight: 700; color: white; letter-spacing: 0.3px; }
-        .header p { font-size: 0.75rem; color: rgba(255,255,255,0.85); margin-top: 2px; }
+        .tab-nav { display:flex; background:white; border-bottom:1px solid var(--border); position:sticky; top:68px; z-index:99; box-shadow:var(--shadow); }
+        .tab-btn { flex:1; padding:10px 4px; background:none; border:none; color:var(--text-muted); font-size:0.7rem; cursor:pointer; display:flex; flex-direction:column; align-items:center; gap:3px; border-bottom:2.5px solid transparent; font-family:inherit; transition:all 0.2s; }
+        .tab-btn span { font-size:1.25rem; line-height:1; }
+        .tab-btn.active { color:var(--primary); border-bottom-color:var(--primary); background:var(--primary-light); }
 
-        /* ===== TAB NAV ===== */
-        .tab-nav {
-            display: flex;
-            background: white;
-            border-bottom: 1px solid var(--border);
-            position: sticky;
-            top: 68px;
-            z-index: 99;
-            box-shadow: var(--shadow);
-        }
-        .tab-btn {
-            flex: 1;
-            padding: 10px 4px;
-            background: none;
-            border: none;
-            color: var(--text-muted);
-            font-size: 0.7rem;
-            cursor: pointer;
-            transition: all 0.2s;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 3px;
-            border-bottom: 2.5px solid transparent;
-            font-family: inherit;
-        }
-        .tab-btn span { font-size: 1.25rem; line-height: 1; }
-        .tab-btn.active {
-            color: var(--primary);
-            border-bottom-color: var(--primary);
-            background: var(--primary-light);
-        }
+        .content { padding:14px; max-width:480px; margin:0 auto; padding-bottom:30px; }
+        .tab-panel { display:none; }
+        .tab-panel.active { display:block; }
 
-        /* ===== CONTENT ===== */
-        .content {
-            padding: 14px;
-            max-width: 480px;
-            margin: 0 auto;
-            padding-bottom: 24px;
-        }
-        .tab-panel { display: none; }
-        .tab-panel.active { display: block; }
+        .card { background:var(--card); border-radius:16px; padding:16px; margin-bottom:14px; border:1px solid var(--border); box-shadow:var(--shadow); }
+        .card-title { font-size:0.8rem; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.6px; margin-bottom:12px; display:flex; align-items:center; gap:6px; }
 
-        /* ===== CARDS ===== */
-        .card {
-            background: var(--card);
+        .stats-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:14px; }
+        .stat-card { background:white; border-radius:16px; padding:14px 12px; border:1px solid var(--border); box-shadow:var(--shadow); text-align:center; }
+        .stat-card.bp-card { border-top:3px solid #ef4444; }
+        .stat-card.wt-card { border-top:3px solid #10b981; }
+        .stat-card.pulse-card { border-top:3px solid #f59e0b; }
+        .stat-card.count-card { border-top:3px solid var(--primary); }
+        .stat-icon { font-size:1.7rem; margin-bottom:6px; }
+        .stat-value { font-size:1.3rem; font-weight:700; color:var(--text); }
+        .stat-label { font-size:0.68rem; color:var(--text-muted); margin-top:2px; }
+        .stat-sub { font-size:0.72rem; color:var(--text-muted); margin-top:3px; }
+
+        .form-section { margin-bottom:14px; }
+        .form-label { display:block; font-size:0.8rem; font-weight:600; color:var(--text); margin-bottom:7px; }
+        .form-row { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+        .input-group { position:relative; }
+        .input-group input, input[type="datetime-local"], textarea {
+            width:100%; padding:12px 14px; background:var(--card2); border:1.5px solid var(--border);
+            border-radius:12px; color:var(--text); font-size:16px; outline:none;
+            transition:border-color 0.2s,box-shadow 0.2s; font-family:inherit; -webkit-appearance:none;
+        }
+        .input-group input:focus, input[type="datetime-local"]:focus, textarea:focus {
+            border-color:var(--primary); box-shadow:0 0 0 3px rgba(79,70,229,0.1); background:white;
+        }
+        .input-unit { position:absolute; right:12px; top:50%; transform:translateY(-50%); font-size:0.72rem; color:var(--text-muted); font-weight:600; pointer-events:none; }
+        .input-group.has-unit input { padding-right:52px; }
+        .bp-row { display:grid; grid-template-columns:1fr 18px 1fr 1fr; gap:6px; align-items:center; }
+        .bp-divider { color:var(--text-muted); font-size:1.3rem; text-align:center; padding-top:12px; }
+        textarea { resize:vertical; min-height:72px; }
+
+        /* OCR Section */
+        .ocr-box {
+            background: linear-gradient(135deg, #eef2ff, #fdf4ff);
+            border: 2px solid #c7d2fe;
             border-radius: 16px;
             padding: 16px;
             margin-bottom: 14px;
-            border: 1px solid var(--border);
-            box-shadow: var(--shadow);
         }
-        .card-title {
-            font-size: 0.8rem;
+        .ocr-title {
+            font-size: 0.85rem;
             font-weight: 700;
-            color: var(--text-muted);
-            text-transform: uppercase;
-            letter-spacing: 0.6px;
+            color: var(--primary);
             margin-bottom: 12px;
             display: flex;
             align-items: center;
             gap: 6px;
         }
-
-        /* ===== STATS GRID ===== */
-        .stats-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 10px;
-            margin-bottom: 14px;
-        }
-        .stat-card {
-            background: white;
-            border-radius: 16px;
-            padding: 14px 12px;
-            border: 1px solid var(--border);
-            box-shadow: var(--shadow);
-            text-align: center;
-        }
-        .stat-card.bp-card { border-top: 3px solid #ef4444; }
-        .stat-card.wt-card { border-top: 3px solid #10b981; }
-        .stat-card.pulse-card { border-top: 3px solid #f59e0b; }
-        .stat-card.count-card { border-top: 3px solid var(--primary); }
-        .stat-icon { font-size: 1.7rem; margin-bottom: 6px; }
-        .stat-value { font-size: 1.3rem; font-weight: 700; color: var(--text); }
-        .stat-label { font-size: 0.68rem; color: var(--text-muted); margin-top: 2px; }
-        .stat-sub { font-size: 0.72rem; color: var(--text-muted); margin-top: 3px; }
-
-        /* ===== FORM ===== */
-        .form-section { margin-bottom: 14px; }
-        .form-label {
-            display: block;
-            font-size: 0.8rem;
-            font-weight: 600;
-            color: var(--text);
-            margin-bottom: 7px;
-        }
-        .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-
-        .input-group { position: relative; }
-        .input-group input,
-        input[type="datetime-local"],
-        textarea {
-            width: 100%;
-            padding: 12px 14px;
-            background: var(--card2);
-            border: 1.5px solid var(--border);
-            border-radius: 12px;
-            color: var(--text);
-            font-size: 16px; /* prevent zoom on iOS */
-            outline: none;
-            transition: border-color 0.2s, box-shadow 0.2s;
-            font-family: inherit;
-            -webkit-appearance: none;
-        }
-        .input-group input:focus,
-        input[type="datetime-local"]:focus,
-        textarea:focus {
-            border-color: var(--primary);
-            box-shadow: 0 0 0 3px rgba(79,70,229,0.1);
-            background: white;
-        }
-        .input-unit {
-            position: absolute;
-            right: 12px;
-            top: 50%;
-            transform: translateY(-50%);
-            font-size: 0.72rem;
-            color: var(--text-muted);
-            font-weight: 600;
-            pointer-events: none;
-            background: var(--card2);
-            padding: 2px 4px;
-            border-radius: 4px;
-        }
-        .input-group.has-unit input { padding-right: 52px; }
-
-        /* BP 3-column */
-        .bp-row {
-            display: grid;
-            grid-template-columns: 1fr 18px 1fr 1fr;
-            gap: 6px;
-            align-items: center;
-        }
-        .bp-divider {
-            color: var(--text-muted);
-            font-size: 1.3rem;
-            text-align: center;
-            padding-top: 12px;
-            font-weight: 300;
-        }
-
-        textarea {
-            resize: vertical;
-            min-height: 72px;
-        }
-
-        /* ===== MOOD ===== */
-        .mood-grid { display: flex; gap: 6px; }
-        .mood-btn {
-            flex: 1;
-            padding: 9px 3px;
-            background: var(--card2);
-            border: 2px solid var(--border);
-            border-radius: 12px;
-            cursor: pointer;
-            text-align: center;
-            font-size: 1.25rem;
-            transition: all 0.2s;
-            font-family: inherit;
-        }
-        .mood-btn div { font-size: 0.58rem; color: var(--text-muted); margin-top: 2px; }
-        .mood-btn.selected {
-            border-color: var(--primary);
-            background: var(--primary-light);
-        }
-        .mood-btn:active { transform: scale(0.93); }
-
-        /* ===== PHOTO ===== */
-        .photo-area {
-            border: 2px dashed var(--border);
+        .ocr-photo-area {
+            border: 2px dashed #a5b4fc;
             border-radius: 14px;
-            padding: 22px 16px;
+            padding: 20px;
             text-align: center;
             cursor: pointer;
-            transition: all 0.2s;
+            background: white;
             position: relative;
             overflow: hidden;
-            background: var(--card2);
+            transition: all 0.2s;
         }
-        .photo-area:hover, .photo-area:active { border-color: var(--primary); background: var(--primary-light); }
-        .photo-area input[type="file"] {
-            position: absolute;
-            inset: 0;
-            opacity: 0;
-            cursor: pointer;
-            font-size: 16px;
+        .ocr-photo-area:active { background: #eef2ff; }
+        .ocr-photo-area input {
+            position: absolute; inset: 0; opacity: 0; cursor: pointer; font-size: 16px;
         }
-        .photo-preview {
-            max-width: 100%;
-            max-height: 200px;
+        .ocr-preview {
+            width: 100%; max-height: 200px; object-fit: contain;
+            border-radius: 10px; display: none; margin-bottom: 10px;
+        }
+        .ocr-status {
+            padding: 10px 14px;
             border-radius: 10px;
+            font-size: 0.82rem;
+            font-weight: 600;
+            margin-top: 10px;
+            text-align: center;
+            display: none;
+        }
+        .ocr-status.loading { background:#fef9c3; color:#854d0e; border:1px solid #fde047; display:block; }
+        .ocr-status.success { background:var(--success-light); color:var(--success); border:1px solid #a7f3d0; display:block; }
+        .ocr-status.error   { background:var(--danger-light);  color:var(--danger);  border:1px solid #fca5a5; display:block; }
+
+        /* OCR Result Preview */
+        .ocr-result {
+            background: white;
+            border: 1.5px solid #a5b4fc;
+            border-radius: 12px;
+            padding: 12px;
             margin-top: 10px;
             display: none;
-            box-shadow: var(--shadow-md);
         }
-        .photo-icon { font-size: 2rem; margin-bottom: 6px; }
-        .photo-text { font-size: 0.8rem; color: var(--text-muted); }
-        .photo-hint { font-size: 0.7rem; color: #a0aec0; margin-top: 4px; }
+        .ocr-result-title { font-size:0.75rem; color:var(--text-muted); font-weight:600; margin-bottom:8px; }
+        .ocr-result-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; }
+        .ocr-result-item { text-align:center; background:#f8fafc; border-radius:8px; padding:8px; }
+        .ocr-result-val { font-size:1.1rem; font-weight:700; color:var(--primary); }
+        .ocr-result-lbl { font-size:0.65rem; color:var(--text-muted); margin-top:2px; }
+        .ocr-apply-btn {
+            width:100%; margin-top:10px; padding:11px;
+            background:linear-gradient(135deg,var(--primary),#7c3aed);
+            border:none; border-radius:10px; color:white;
+            font-size:0.88rem; font-weight:700; cursor:pointer; font-family:inherit;
+        }
+        .ocr-apply-btn:active { opacity:0.85; }
 
-        /* ===== BUTTONS ===== */
-        .btn {
-            padding: 13px 16px;
-            border: none;
-            border-radius: 12px;
-            font-size: 0.9rem;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.2s;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            gap: 7px;
-            font-family: inherit;
-            -webkit-appearance: none;
-        }
-        .btn-full { width: 100%; }
-        .btn-primary {
-            background: linear-gradient(135deg, var(--primary), #7c3aed);
-            color: white;
-            box-shadow: 0 4px 12px rgba(79,70,229,0.35);
-        }
-        .btn-primary:active { transform: scale(0.97); box-shadow: none; }
-        .btn-success { background: var(--success); color: white; box-shadow: 0 4px 12px rgba(5,150,105,0.3); }
-        .btn-danger { background: var(--danger); color: white; box-shadow: 0 4px 12px rgba(220,38,38,0.3); }
-        .btn-outline {
-            background: white;
-            border: 1.5px solid var(--border);
-            color: var(--text);
-        }
-        .btn-sm { padding: 8px 14px; font-size: 0.78rem; border-radius: 9px; }
-        .btn:active { opacity: 0.85; }
+        /* Progress Bar */
+        .ocr-progress { margin-top:8px; display:none; }
+        .ocr-progress-track { background:#e2e8f0; border-radius:999px; height:6px; overflow:hidden; }
+        .ocr-progress-fill { height:100%; background:linear-gradient(90deg,var(--primary),#7c3aed); border-radius:999px; transition:width 0.3s; width:0%; }
+        .ocr-progress-text { font-size:0.7rem; color:var(--text-muted); text-align:center; margin-top:4px; }
 
-        /* ===== CHART ===== */
-        .chart-container { position: relative; height: 195px; }
+        .mood-grid { display:flex; gap:6px; }
+        .mood-btn { flex:1; padding:9px 3px; background:var(--card2); border:2px solid var(--border); border-radius:12px; cursor:pointer; text-align:center; font-size:1.25rem; transition:all 0.2s; font-family:inherit; }
+        .mood-btn div { font-size:0.58rem; color:var(--text-muted); margin-top:2px; }
+        .mood-btn.selected { border-color:var(--primary); background:var(--primary-light); }
 
-        /* ===== FILTER ===== */
-        .filter-group {
-            display: flex;
-            gap: 7px;
-            margin-bottom: 12px;
-        }
-        .filter-btn {
-            padding: 7px 14px;
-            background: white;
-            border: 1.5px solid var(--border);
-            border-radius: 20px;
-            color: var(--text-muted);
-            font-size: 0.75rem;
-            cursor: pointer;
-            font-weight: 600;
-            transition: all 0.2s;
-            font-family: inherit;
-        }
-        .filter-btn.active {
-            background: var(--primary);
-            border-color: var(--primary);
-            color: white;
-        }
+        .photo-area { border:2px dashed var(--border); border-radius:14px; padding:22px 16px; text-align:center; cursor:pointer; position:relative; overflow:hidden; background:var(--card2); transition:all 0.2s; }
+        .photo-area:active { border-color:var(--primary); }
+        .photo-area input { position:absolute; inset:0; opacity:0; cursor:pointer; font-size:16px; }
+        .photo-preview { max-width:100%; max-height:200px; border-radius:10px; margin-top:10px; display:none; }
+        .photo-icon { font-size:2rem; margin-bottom:6px; }
+        .photo-text { font-size:0.8rem; color:var(--text-muted); }
 
-        /* ===== ACTION ROW ===== */
-        .action-row { display: flex; gap: 8px; margin-bottom: 12px; }
-        .action-row .btn { flex: 1; }
+        .btn { padding:13px 16px; border:none; border-radius:12px; font-size:0.9rem; font-weight:600; cursor:pointer; transition:all 0.2s; display:inline-flex; align-items:center; justify-content:center; gap:7px; font-family:inherit; }
+        .btn-full { width:100%; }
+        .btn-primary { background:linear-gradient(135deg,var(--primary),#7c3aed); color:white; box-shadow:0 4px 12px rgba(79,70,229,0.35); }
+        .btn-primary:active { transform:scale(0.97); }
+        .btn-success { background:var(--success); color:white; }
+        .btn-danger  { background:var(--danger);  color:white; }
+        .btn-outline { background:white; border:1.5px solid var(--border); color:var(--text); }
+        .btn-sm { padding:8px 14px; font-size:0.78rem; border-radius:9px; }
 
-        /* ===== HISTORY ===== */
-        .history-item {
-            background: white;
-            border-radius: 14px;
-            padding: 14px;
-            margin-bottom: 10px;
-            border: 1px solid var(--border);
-            box-shadow: var(--shadow);
-            transition: box-shadow 0.2s;
-        }
-        .history-item:active { box-shadow: var(--shadow-md); }
-        .history-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-            margin-bottom: 10px;
-        }
-        .history-date { font-size: 0.78rem; color: var(--text-muted); margin-top: 2px; }
-        .history-title { font-weight: 600; font-size: 0.88rem; color: var(--text); }
-        .history-stats {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 7px;
-            margin-bottom: 10px;
-        }
-        .history-stat {
-            text-align: center;
-            background: var(--card2);
-            border-radius: 10px;
-            padding: 8px 4px;
-        }
-        .history-stat-val { font-size: 0.85rem; font-weight: 700; }
-        .history-stat-lbl { font-size: 0.63rem; color: var(--text-muted); margin-top: 1px; }
-        .history-photo {
-            width: 100%;
-            max-height: 170px;
-            object-fit: cover;
-            border-radius: 10px;
-            margin-bottom: 8px;
-        }
-        .history-note {
-            font-size: 0.78rem;
-            color: var(--text-muted);
-            font-style: italic;
-            padding: 8px 10px;
-            background: #fafafa;
-            border-radius: 8px;
-            border-left: 3px solid var(--border);
-        }
-        .delete-btn {
-            background: var(--danger-light);
-            border: none;
-            color: var(--danger);
-            padding: 5px 10px;
-            border-radius: 8px;
-            font-size: 0.72rem;
-            cursor: pointer;
-            font-weight: 600;
-            font-family: inherit;
-        }
+        .chart-container { position:relative; height:195px; }
+        .filter-group { display:flex; gap:7px; margin-bottom:12px; }
+        .filter-btn { padding:7px 14px; background:white; border:1.5px solid var(--border); border-radius:20px; color:var(--text-muted); font-size:0.75rem; cursor:pointer; font-weight:600; transition:all 0.2s; font-family:inherit; }
+        .filter-btn.active { background:var(--primary); border-color:var(--primary); color:white; }
+        .action-row { display:flex; gap:8px; margin-bottom:12px; }
+        .action-row .btn { flex:1; }
 
-        /* ===== BP BADGE ===== */
-        .bp-badge {
-            display: inline-block;
-            padding: 3px 9px;
-            border-radius: 20px;
-            font-size: 0.68rem;
-            font-weight: 700;
-            margin-top: 4px;
-        }
-        .bp-normal { background: var(--success-light); color: var(--success); }
-        .bp-elevated { background: var(--warning-light); color: var(--warning); }
-        .bp-high { background: var(--danger-light); color: var(--danger); }
-        .bp-low { background: var(--primary-light); color: var(--primary); }
+        .history-item { background:white; border-radius:14px; padding:14px; margin-bottom:10px; border:1px solid var(--border); box-shadow:var(--shadow); }
+        .history-header { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:10px; }
+        .history-title { font-weight:600; font-size:0.88rem; }
+        .history-date { font-size:0.78rem; color:var(--text-muted); margin-top:2px; }
+        .history-stats { display:grid; grid-template-columns:repeat(3,1fr); gap:7px; margin-bottom:10px; }
+        .history-stat { text-align:center; background:var(--card2); border-radius:10px; padding:8px 4px; }
+        .history-stat-val { font-size:0.85rem; font-weight:700; }
+        .history-stat-lbl { font-size:0.63rem; color:var(--text-muted); margin-top:1px; }
+        .history-photo { width:100%; max-height:170px; object-fit:cover; border-radius:10px; margin-bottom:8px; }
+        .history-note { font-size:0.78rem; color:var(--text-muted); font-style:italic; padding:8px 10px; background:#fafafa; border-radius:8px; border-left:3px solid var(--border); }
+        .delete-btn { background:var(--danger-light); border:none; color:var(--danger); padding:5px 10px; border-radius:8px; font-size:0.72rem; cursor:pointer; font-weight:600; font-family:inherit; }
 
-        /* ===== AVG ROW ===== */
-        .avg-row {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 9px 0;
-            border-bottom: 1px solid var(--border);
-            font-size: 0.85rem;
-        }
-        .avg-row:last-child { border-bottom: none; }
-        .avg-label { color: var(--text-muted); font-size: 0.82rem; }
-        .avg-value { font-weight: 700; color: var(--text); }
+        .bp-badge { display:inline-block; padding:3px 9px; border-radius:20px; font-size:0.68rem; font-weight:700; margin-top:4px; }
+        .bp-normal   { background:var(--success-light); color:var(--success); }
+        .bp-elevated { background:var(--warning-light); color:var(--warning); }
+        .bp-high     { background:var(--danger-light);  color:var(--danger);  }
+        .bp-low      { background:var(--primary-light); color:var(--primary); }
 
-        /* ===== ALERT ===== */
-        .alert {
-            padding: 11px 13px;
-            border-radius: 12px;
-            font-size: 0.8rem;
-            margin-bottom: 12px;
-            display: flex;
-            align-items: flex-start;
-            gap: 8px;
-            line-height: 1.5;
-        }
-        .alert-info { background: #eef2ff; border: 1px solid #c7d2fe; color: #4338ca; }
-        .alert-warning { background: var(--warning-light); border: 1px solid #fde68a; color: #92400e; }
-        .alert-success { background: var(--success-light); border: 1px solid #a7f3d0; color: #065f46; }
+        .avg-row { display:flex; justify-content:space-between; align-items:center; padding:9px 0; border-bottom:1px solid var(--border); font-size:0.85rem; }
+        .avg-row:last-child { border-bottom:none; }
+        .avg-label { color:var(--text-muted); font-size:0.82rem; }
+        .avg-value { font-weight:700; }
 
-        /* ===== EMPTY STATE ===== */
-        .empty-state {
-            text-align: center;
-            padding: 40px 20px;
-            color: var(--text-muted);
-        }
-        .empty-state .icon { font-size: 3.5rem; margin-bottom: 12px; }
-        .empty-state p { font-size: 0.88rem; line-height: 1.6; }
+        .alert { padding:11px 13px; border-radius:12px; font-size:0.8rem; margin-bottom:12px; display:flex; align-items:flex-start; gap:8px; line-height:1.5; }
+        .alert-info    { background:#eef2ff; border:1px solid #c7d2fe; color:#4338ca; }
+        .alert-warning { background:var(--warning-light); border:1px solid #fde68a; color:#92400e; }
 
-        /* ===== TOAST ===== */
-        .toast {
-            position: fixed;
-            bottom: 24px;
-            left: 50%;
-            transform: translateX(-50%) translateY(120px);
-            background: #1e293b;
-            color: white;
-            padding: 12px 22px;
-            border-radius: 14px;
-            font-size: 0.88rem;
-            font-weight: 600;
-            z-index: 9999;
-            transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-            box-shadow: 0 8px 32px rgba(0,0,0,0.2);
-            white-space: nowrap;
-            max-width: 90vw;
-        }
-        .toast.show { transform: translateX(-50%) translateY(0); }
-        .toast.success { background: #065f46; }
-        .toast.error { background: #991b1b; }
+        .empty-state { text-align:center; padding:40px 20px; color:var(--text-muted); }
+        .empty-state .icon { font-size:3.5rem; margin-bottom:12px; }
+        .empty-state p { font-size:0.88rem; line-height:1.6; }
 
-        /* ===== SETTINGS ===== */
-        .settings-input {
-            width: 100%;
-            padding: 12px 14px;
-            background: var(--card2);
-            border: 1.5px solid var(--border);
-            border-radius: 12px;
-            color: var(--text);
-            font-size: 16px;
-            outline: none;
-            font-family: inherit;
-            -webkit-appearance: none;
-            transition: border-color 0.2s, box-shadow 0.2s;
-        }
-        .settings-input:focus {
-            border-color: var(--primary);
-            box-shadow: 0 0 0 3px rgba(79,70,229,0.1);
-            background: white;
-        }
+        .toast { position:fixed; bottom:24px; left:50%; transform:translateX(-50%) translateY(120px); background:#1e293b; color:white; padding:12px 22px; border-radius:14px; font-size:0.88rem; font-weight:600; z-index:9999; transition:transform 0.3s cubic-bezier(0.34,1.56,0.64,1); box-shadow:0 8px 32px rgba(0,0,0,0.2); white-space:nowrap; max-width:90vw; }
+        .toast.show { transform:translateX(-50%) translateY(0); }
+        .toast.success { background:#065f46; }
+        .toast.error   { background:#991b1b; }
 
-        /* ===== BP GUIDE ===== */
-        .bp-guide-row {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            padding: 8px 10px;
-            border-radius: 10px;
-            margin-bottom: 6px;
-            font-size: 0.8rem;
-        }
-        .bp-guide-dot {
-            width: 10px;
-            height: 10px;
-            border-radius: 50%;
-            flex-shrink: 0;
-        }
+        .settings-input { width:100%; padding:12px 14px; background:var(--card2); border:1.5px solid var(--border); border-radius:12px; color:var(--text); font-size:16px; outline:none; font-family:inherit; -webkit-appearance:none; transition:border-color 0.2s; }
+        .settings-input:focus { border-color:var(--primary); box-shadow:0 0 0 3px rgba(79,70,229,0.1); }
 
-        /* ===== DIVIDER ===== */
-        .divider {
-            height: 1px;
-            background: var(--border);
-            margin: 14px 0;
+        .bp-guide-row { display:flex; align-items:center; gap:10px; padding:8px 10px; border-radius:10px; margin-bottom:6px; font-size:0.8rem; }
+        .bp-guide-dot { width:10px; height:10px; border-radius:50%; flex-shrink:0; }
+
+        /* Manual edit fields in OCR result */
+        .ocr-edit-input {
+            width:100%; padding:6px 8px; border:1.5px solid #c7d2fe;
+            border-radius:8px; font-size:1rem; font-weight:700;
+            color:var(--primary); text-align:center; background:white;
+            outline:none; font-family:inherit;
         }
+        .ocr-edit-input:focus { border-color:var(--primary); }
 
-        /* ===== SCROLLABLE ===== */
-        .history-scroll { }
+        #clearPhotoBtn { display:none; margin-top:8px; }
 
-        /* Safe area for notch phones */
         @supports (padding-bottom: env(safe-area-inset-bottom)) {
-            .content { padding-bottom: calc(24px + env(safe-area-inset-bottom)); }
+            .content { padding-bottom: calc(30px + env(safe-area-inset-bottom)); }
         }
-
-        /* ===== BMI Bar ===== */
-        .bmi-bar-wrap { margin-top: 8px; }
-        .bmi-bar-track {
-            height: 8px;
-            border-radius: 999px;
-            background: linear-gradient(to right, #6366f1 0%, #10b981 25%, #f59e0b 60%, #ef4444 100%);
-            position: relative;
-            margin-bottom: 4px;
-        }
-        .bmi-marker {
-            position: absolute;
-            top: -3px;
-            width: 14px;
-            height: 14px;
-            background: white;
-            border: 3px solid #1e293b;
-            border-radius: 50%;
-            transform: translateX(-50%);
-            transition: left 0.5s ease;
-        }
-        .bmi-labels {
-            display: flex;
-            justify-content: space-between;
-            font-size: 0.6rem;
-            color: var(--text-muted);
-        }
-
-        /* clear photo btn */
-        #clearPhotoBtn { display: none; margin-top: 8px; }
-
     </style>
 </head>
 <body>
 
-<!-- HEADER -->
 <div class="header">
     <h1>❤️ Health Tracker</h1>
     <p id="headerDate">กำลังโหลด...</p>
 </div>
 
-<!-- TAB NAV -->
 <div class="tab-nav">
-    <button class="tab-btn active" onclick="switchTab('dashboard', this)">
-        <span>📊</span>Dashboard
-    </button>
-    <button class="tab-btn" onclick="switchTab('record', this)">
-        <span>✏️</span>บันทึก
-    </button>
-    <button class="tab-btn" onclick="switchTab('history', this)">
-        <span>📋</span>ประวัติ
-    </button>
-    <button class="tab-btn" onclick="switchTab('settings', this)">
-        <span>⚙️</span>ตั้งค่า
-    </button>
+    <button class="tab-btn active" onclick="switchTab('dashboard',this)"><span>📊</span>Dashboard</button>
+    <button class="tab-btn" onclick="switchTab('record',this)"><span>✏️</span>บันทึก</button>
+    <button class="tab-btn" onclick="switchTab('history',this)"><span>📋</span>ประวัติ</button>
+    <button class="tab-btn" onclick="switchTab('settings',this)"><span>⚙️</span>ตั้งค่า</button>
 </div>
 
 <div class="content">
 
-    <!-- ===================== DASHBOARD ===================== -->
+    <!-- DASHBOARD -->
     <div class="tab-panel active" id="tab-dashboard">
-
         <div id="bpAlertBox"></div>
-
-        <!-- Stats Grid -->
         <div class="stats-grid">
             <div class="stat-card bp-card">
                 <div class="stat-icon">🩺</div>
@@ -599,83 +274,86 @@
                 <div class="stat-sub">รายการ</div>
             </div>
         </div>
-
-        <!-- BMI Card (conditional) -->
-        <div class="card" id="bmiCard" style="display:none">
-            <div class="card-title">📏 ดัชนีมวลกาย (BMI)</div>
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
-                <div>
-                    <div style="font-size:1.8rem;font-weight:700;color:var(--primary)" id="bmiValue">—</div>
-                    <div id="bmiCategory" style="font-size:0.8rem;color:var(--text-muted);margin-top:2px"></div>
-                </div>
-                <div style="font-size:2.5rem" id="bmiEmoji">📊</div>
-            </div>
-            <div class="bmi-bar-wrap">
-                <div class="bmi-bar-track">
-                    <div class="bmi-marker" id="bmiMarker" style="left:0%"></div>
-                </div>
-                <div class="bmi-labels">
-                    <span>ต่ำ<br>&lt;18.5</span>
-                    <span>ปกติ<br>18.5-22.9</span>
-                    <span>เกิน<br>23-24.9</span>
-                    <span>อ้วน<br>≥25</span>
-                </div>
-            </div>
-        </div>
-
-        <!-- 7-day Average -->
         <div class="card">
             <div class="card-title">📈 ค่าเฉลี่ย 7 วันย้อนหลัง</div>
-            <div class="avg-row">
-                <span class="avg-label">🩺 Systolic เฉลี่ย</span>
-                <span class="avg-value" id="avgSys">—</span>
-            </div>
-            <div class="avg-row">
-                <span class="avg-label">🩺 Diastolic เฉลี่ย</span>
-                <span class="avg-value" id="avgDia">—</span>
-            </div>
-            <div class="avg-row">
-                <span class="avg-label">⚖️ น้ำหนักเฉลี่ย</span>
-                <span class="avg-value" id="avgWt">—</span>
-            </div>
-            <div class="avg-row">
-                <span class="avg-label">💓 ชีพจรเฉลี่ย</span>
-                <span class="avg-value" id="avgPulse">—</span>
-            </div>
+            <div class="avg-row"><span class="avg-label">🩺 Systolic เฉลี่ย</span><span class="avg-value" id="avgSys">—</span></div>
+            <div class="avg-row"><span class="avg-label">🩺 Diastolic เฉลี่ย</span><span class="avg-value" id="avgDia">—</span></div>
+            <div class="avg-row"><span class="avg-label">⚖️ น้ำหนักเฉลี่ย</span><span class="avg-value" id="avgWt">—</span></div>
+            <div class="avg-row"><span class="avg-label">💓 ชีพจรเฉลี่ย</span><span class="avg-value" id="avgPulse">—</span></div>
         </div>
-
-        <!-- BP Chart -->
         <div class="card">
             <div class="card-title">🩺 กราฟความดัน (7 วัน)</div>
-            <div class="chart-container">
-                <canvas id="bpChart"></canvas>
-            </div>
+            <div class="chart-container"><canvas id="bpChart"></canvas></div>
         </div>
-
-        <!-- Weight Chart -->
         <div class="card">
             <div class="card-title">⚖️ กราฟน้ำหนัก (7 วัน)</div>
-            <div class="chart-container">
-                <canvas id="weightChart"></canvas>
+            <div class="chart-container"><canvas id="weightChart"></canvas></div>
+        </div>
+    </div>
+
+    <!-- RECORD -->
+    <div class="tab-panel" id="tab-record">
+
+        <!-- ===== OCR SECTION ===== -->
+        <div class="ocr-box">
+            <div class="ocr-title">🤖 สแกนค่าจากรูปอัตโนมัติ (OCR)</div>
+
+            <!-- OCR Photo -->
+            <div class="ocr-photo-area" id="ocrPhotoArea">
+                <input type="file" id="ocrPhotoInput" accept="image/*" capture="environment" onchange="handleOCRPhoto(event)">
+                <div id="ocrPlaceholder">
+                    <div style="font-size:2.5rem;margin-bottom:8px">📷</div>
+                    <div style="font-size:0.85rem;font-weight:600;color:var(--primary)">ถ่ายรูปเครื่องวัดความดัน</div>
+                    <div style="font-size:0.75rem;color:var(--text-muted);margin-top:4px">แตะเพื่อถ่ายรูปหรือเลือกรูป</div>
+                </div>
+                <img id="ocrPreview" class="ocr-preview" alt="OCR preview">
+            </div>
+
+            <!-- Progress -->
+            <div class="ocr-progress" id="ocrProgress">
+                <div class="ocr-progress-track">
+                    <div class="ocr-progress-fill" id="ocrProgressFill"></div>
+                </div>
+                <div class="ocr-progress-text" id="ocrProgressText">กำลังวิเคราะห์...</div>
+            </div>
+
+            <!-- Status -->
+            <div class="ocr-status" id="ocrStatus"></div>
+
+            <!-- Result with editable fields -->
+            <div class="ocr-result" id="ocrResult">
+                <div class="ocr-result-title">📊 ค่าที่อ่านได้ — แก้ไขได้ก่อนกด Apply</div>
+                <div class="ocr-result-grid">
+                    <div class="ocr-result-item">
+                        <input class="ocr-edit-input" id="ocrSys" type="number" placeholder="—">
+                        <div class="ocr-result-lbl">Systolic</div>
+                    </div>
+                    <div class="ocr-result-item">
+                        <input class="ocr-edit-input" id="ocrDia" type="number" placeholder="—">
+                        <div class="ocr-result-lbl">Diastolic</div>
+                    </div>
+                    <div class="ocr-result-item">
+                        <input class="ocr-edit-input" id="ocrPulse" type="number" placeholder="—">
+                        <div class="ocr-result-lbl">ชีพจร (bpm)</div>
+                    </div>
+                </div>
+                <button class="ocr-apply-btn" onclick="applyOCRValues()">
+                    ✅ ใช้ค่านี้ → ใส่แบบฟอร์ม
+                </button>
             </div>
         </div>
 
-    </div>
-
-    <!-- ===================== RECORD ===================== -->
-    <div class="tab-panel" id="tab-record">
+        <!-- FORM -->
         <div class="card">
             <div class="card-title">📝 บันทึกข้อมูลสุขภาพ</div>
 
-            <!-- Datetime -->
             <div class="form-section">
                 <label class="form-label">📅 วันที่และเวลา</label>
                 <input type="datetime-local" id="recordDatetime">
             </div>
 
-            <!-- Blood Pressure -->
             <div class="form-section">
-                <label class="form-label">🩺 ความดันโลหิต (mmHg) + ชีพจร</label>
+                <label class="form-label">🩺 ความดันโลหิต + ชีพจร</label>
                 <div class="bp-row">
                     <div class="input-group">
                         <input type="number" id="systolic" placeholder="Sys" min="60" max="250" inputmode="numeric">
@@ -689,22 +367,19 @@
                         <span class="input-unit">bpm</span>
                     </div>
                 </div>
-                <!-- Live BP Preview -->
                 <div id="bpLivePreview" style="margin-top:8px;display:none">
                     <span id="bpLiveBadge" class="bp-badge"></span>
                 </div>
             </div>
 
-            <!-- Weight -->
             <div class="form-section">
                 <label class="form-label">⚖️ น้ำหนัก</label>
                 <div class="input-group has-unit">
-                    <input type="number" id="weight" placeholder="0.0" step="0.1" min="20" max="300" inputmode="decimal">
+                    <input type="number" id="weight" placeholder="0.0" step="0.1" inputmode="decimal">
                     <span class="input-unit">kg</span>
                 </div>
             </div>
 
-            <!-- Mood -->
             <div class="form-section">
                 <label class="form-label">😊 อารมณ์วันนี้</label>
                 <div class="mood-grid">
@@ -716,56 +391,46 @@
                 </div>
             </div>
 
-            <!-- Note -->
             <div class="form-section">
                 <label class="form-label">📝 บันทึกเพิ่มเติม</label>
                 <textarea id="noteInput" placeholder="อาการ, ยาที่ทาน, กิจกรรมวันนี้..."></textarea>
             </div>
 
-            <!-- Photo -->
             <div class="form-section">
-                <label class="form-label">📷 แนบรูปภาพ</label>
-                <div class="photo-area" id="photoArea">
+                <label class="form-label">📷 แนบรูปภาพ (ไม่บังคับ)</label>
+                <div class="photo-area">
                     <input type="file" id="photoInput" accept="image/*" capture="environment" onchange="handlePhoto(event)">
                     <div id="photoPlaceholder">
-                        <div class="photo-icon">📷</div>
-                        <div class="photo-text">แตะเพื่อถ่ายรูปหรือเลือกรูป</div>
-                        <div class="photo-hint">รองรับ JPG, PNG, HEIC</div>
+                        <div class="photo-icon">🖼️</div>
+                        <div class="photo-text">แนบรูปเพิ่มเติม</div>
                     </div>
                     <img id="photoPreview" class="photo-preview" alt="preview">
                 </div>
                 <button class="btn btn-outline btn-sm" id="clearPhotoBtn" onclick="clearPhoto()">✕ ล้างรูป</button>
             </div>
 
-            <button class="btn btn-primary btn-full" onclick="saveRecord()">
-                💾 บันทึกข้อมูล
-            </button>
+            <button class="btn btn-primary btn-full" onclick="saveRecord()">💾 บันทึกข้อมูล</button>
         </div>
     </div>
 
-    <!-- ===================== HISTORY ===================== -->
+    <!-- HISTORY -->
     <div class="tab-panel" id="tab-history">
-
         <div class="filter-group">
-            <button class="filter-btn active" onclick="setFilter(7, this)">7 วัน</button>
-            <button class="filter-btn" onclick="setFilter(14, this)">14 วัน</button>
-            <button class="filter-btn" onclick="setFilter(30, this)">30 วัน</button>
-            <button class="filter-btn" onclick="setFilter(0, this)">ทั้งหมด</button>
+            <button class="filter-btn active" onclick="setFilter(7,this)">7 วัน</button>
+            <button class="filter-btn" onclick="setFilter(14,this)">14 วัน</button>
+            <button class="filter-btn" onclick="setFilter(30,this)">30 วัน</button>
+            <button class="filter-btn" onclick="setFilter(0,this)">ทั้งหมด</button>
         </div>
-
         <div class="action-row">
             <button class="btn btn-success btn-sm" onclick="exportCSV()">📥 Export CSV</button>
             <button class="btn btn-danger btn-sm" onclick="confirmClearAll()">🗑️ Clear All</button>
         </div>
-
         <div id="historyCountBadge" class="alert alert-info">📋 กำลังโหลด...</div>
-
         <div id="historyList"></div>
     </div>
 
-    <!-- ===================== SETTINGS ===================== -->
+    <!-- SETTINGS -->
     <div class="tab-panel" id="tab-settings">
-
         <div class="card">
             <div class="card-title">👤 ข้อมูลส่วนตัว</div>
             <div class="form-section">
@@ -784,57 +449,27 @@
             </div>
             <button class="btn btn-primary btn-full" onclick="saveSettings()">💾 บันทึกการตั้งค่า</button>
         </div>
-
         <div class="card">
             <div class="card-title">📊 สรุปข้อมูล</div>
-            <div class="avg-row">
-                <span class="avg-label">บันทึกทั้งหมด</span>
-                <span class="avg-value" id="sumTotal">0 รายการ</span>
-            </div>
-            <div class="avg-row">
-                <span class="avg-label">บันทึกแรก</span>
-                <span class="avg-value" id="sumFirst">—</span>
-            </div>
-            <div class="avg-row">
-                <span class="avg-label">บันทึกล่าสุด</span>
-                <span class="avg-value" id="sumLast">—</span>
-            </div>
+            <div class="avg-row"><span class="avg-label">บันทึกทั้งหมด</span><span class="avg-value" id="sumTotal">0</span></div>
+            <div class="avg-row"><span class="avg-label">บันทึกแรก</span><span class="avg-value" id="sumFirst">—</span></div>
+            <div class="avg-row"><span class="avg-label">บันทึกล่าสุด</span><span class="avg-value" id="sumLast">—</span></div>
         </div>
-
         <div class="card">
             <div class="card-title">ℹ️ เกณฑ์ความดันโลหิต</div>
-            <div class="bp-guide-row" style="background:#ecfdf5">
-                <div class="bp-guide-dot" style="background:#059669"></div>
-                <div><strong>ปกติ</strong> — &lt;120/&lt;80 mmHg</div>
-            </div>
-            <div class="bp-guide-row" style="background:#fffbeb">
-                <div class="bp-guide-dot" style="background:#d97706"></div>
-                <div><strong>สูงขั้นต้น</strong> — 120-129/&lt;80 mmHg</div>
-            </div>
-            <div class="bp-guide-row" style="background:#fff7ed">
-                <div class="bp-guide-dot" style="background:#ea580c"></div>
-                <div><strong>Stage 1</strong> — 130-139/80-89 mmHg</div>
-            </div>
-            <div class="bp-guide-row" style="background:#fef2f2">
-                <div class="bp-guide-dot" style="background:#dc2626"></div>
-                <div><strong>Stage 2</strong> — ≥140/≥90 mmHg</div>
-            </div>
-            <div class="bp-guide-row" style="background:#eef2ff">
-                <div class="bp-guide-dot" style="background:#4f46e5"></div>
-                <div><strong>ความดันต่ำ</strong> — &lt;90/&lt;60 mmHg</div>
-            </div>
+            <div class="bp-guide-row" style="background:#ecfdf5"><div class="bp-guide-dot" style="background:#059669"></div><div><strong>ปกติ</strong> — &lt;120/&lt;80 mmHg</div></div>
+            <div class="bp-guide-row" style="background:#fffbeb"><div class="bp-guide-dot" style="background:#d97706"></div><div><strong>สูงขั้นต้น</strong> — 120-129/&lt;80 mmHg</div></div>
+            <div class="bp-guide-row" style="background:#fff7ed"><div class="bp-guide-dot" style="background:#ea580c"></div><div><strong>Stage 1</strong> — 130-139/80-89 mmHg</div></div>
+            <div class="bp-guide-row" style="background:#fef2f2"><div class="bp-guide-dot" style="background:#dc2626"></div><div><strong>Stage 2</strong> — ≥140/≥90 mmHg</div></div>
+            <div class="bp-guide-row" style="background:#eef2ff"><div class="bp-guide-dot" style="background:#4f46e5"></div><div><strong>ความดันต่ำ</strong> — &lt;90/&lt;60 mmHg</div></div>
         </div>
-
         <div class="card">
             <div class="card-title" style="color:#dc2626">⚠️ จัดการข้อมูล</div>
-            <p style="font-size:0.8rem;color:var(--text-muted);margin-bottom:12px">ลบข้อมูลทั้งหมดออกจากอุปกรณ์ ไม่สามารถกู้คืนได้</p>
             <button class="btn btn-danger btn-full" onclick="confirmClearAll()">🗑️ ลบข้อมูลทั้งหมด</button>
         </div>
-
     </div>
 </div>
 
-<!-- Toast -->
 <div class="toast" id="toast"></div>
 
 <script>
@@ -842,10 +477,10 @@
 let records  = JSON.parse(localStorage.getItem('healthRecords')  || '[]');
 let settings = JSON.parse(localStorage.getItem('healthSettings') || '{"name":"","age":"","height":""}');
 let selectedMood = '';
-let photoBase64   = '';
+let photoBase64  = '';
 let currentFilter = 7;
-let bpChartInst   = null;
-let wtChartInst   = null;
+let bpChartInst = null;
+let wtChartInst = null;
 
 // ==================== INIT ====================
 window.addEventListener('DOMContentLoaded', () => {
@@ -865,10 +500,9 @@ function updateHeaderDate() {
     document.getElementById('headerDate').textContent =
         `วัน${days[now.getDay()]}ที่ ${now.getDate()} ${months[now.getMonth()]} ${now.getFullYear()+543}`;
 }
-
 function setDefaultDatetime() {
-    const now   = new Date();
-    const local = new Date(now.getTime() - now.getTimezoneOffset() * 60000);
+    const now = new Date();
+    const local = new Date(now.getTime() - now.getTimezoneOffset()*60000);
     document.getElementById('recordDatetime').value = local.toISOString().slice(0,16);
 }
 
@@ -876,37 +510,180 @@ function setDefaultDatetime() {
 function switchTab(tab, btnEl) {
     document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
     document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-    document.getElementById('tab-' + tab).classList.add('active');
+    document.getElementById('tab-'+tab).classList.add('active');
     btnEl.classList.add('active');
-    if (tab === 'dashboard') renderDashboard();
-    if (tab === 'history')   renderHistory();
-    if (tab === 'settings')  renderSettingsStats();
+    if (tab==='dashboard') renderDashboard();
+    if (tab==='history')   renderHistory();
+    if (tab==='settings')  renderSettingsStats();
+}
+
+// ==================== OCR ====================
+function handleOCRPhoto(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = ev => {
+        // Show preview
+        const preview = document.getElementById('ocrPreview');
+        preview.src = ev.target.result;
+        preview.style.display = 'block';
+        document.getElementById('ocrPlaceholder').style.display = 'none';
+
+        // Start OCR
+        runOCR(ev.target.result);
+    };
+    reader.readAsDataURL(file);
+}
+
+async function runOCR(imageData) {
+    const statusEl   = document.getElementById('ocrStatus');
+    const progressEl = document.getElementById('ocrProgress');
+    const fillEl     = document.getElementById('ocrProgressFill');
+    const textEl     = document.getElementById('ocrProgressText');
+    const resultEl   = document.getElementById('ocrResult');
+
+    // Show progress
+    progressEl.style.display = 'block';
+    resultEl.style.display   = 'none';
+    statusEl.className = 'ocr-status loading';
+    statusEl.textContent = '🔍 กำลังวิเคราะห์รูปภาพ...';
+
+    try {
+        const result = await Tesseract.recognize(imageData, 'eng', {
+            logger: m => {
+                if (m.status === 'recognizing text') {
+                    const pct = Math.round(m.progress * 100);
+                    fillEl.style.width = pct + '%';
+                    textEl.textContent = `กำลังอ่านตัวเลข... ${pct}%`;
+                }
+            }
+        });
+
+        progressEl.style.display = 'none';
+        const text = result.data.text;
+        console.log('OCR Raw:', text);
+
+        // Parse numbers from OCR text
+        const parsed = parseBloodPressureFromText(text);
+
+        if (parsed.sys || parsed.dia || parsed.pulse) {
+            statusEl.className = 'ocr-status success';
+            statusEl.textContent = '✅ อ่านค่าได้แล้ว! ตรวจสอบก่อนกด Apply';
+
+            document.getElementById('ocrSys').value   = parsed.sys   || '';
+            document.getElementById('ocrDia').value   = parsed.dia   || '';
+            document.getElementById('ocrPulse').value = parsed.pulse || '';
+
+            resultEl.style.display = 'block';
+        } else {
+            statusEl.className = 'ocr-status error';
+            statusEl.textContent = '⚠️ อ่านค่าไม่ได้ชัดเจน ลองถ่ายรูปใหม่ให้ชัดขึ้น';
+            // Still show result for manual edit
+            document.getElementById('ocrSys').value   = '';
+            document.getElementById('ocrDia').value   = '';
+            document.getElementById('ocrPulse').value = '';
+            resultEl.style.display = 'block';
+        }
+    } catch(err) {
+        progressEl.style.display = 'none';
+        statusEl.className = 'ocr-status error';
+        statusEl.textContent = '❌ เกิดข้อผิดพลาด ลองใหม่อีกครั้ง';
+        console.error('OCR Error:', err);
+    }
+}
+
+function parseBloodPressureFromText(text) {
+    // Clean text
+    const clean = text.replace(/\s+/g,' ').replace(/[oO]/g,'0').replace(/[lI]/g,'1');
+    let sys=null, dia=null, pulse=null;
+
+    // Pattern 1: 120/80 format
+    const slashPattern = clean.match(/(\d{2,3})\s*[\/\\|]\s*(\d{2,3})/);
+    if (slashPattern) {
+        sys = parseInt(slashPattern[1]);
+        dia = parseInt(slashPattern[2]);
+    }
+
+    // Pattern 2: Two large numbers close together (common on BP monitors)
+    if (!sys) {
+        const nums = [...clean.matchAll(/\b(\d{2,3})\b/g)]
+            .map(m => parseInt(m[1]))
+            .filter(n => n >= 50 && n <= 250);
+
+        if (nums.length >= 2) {
+            // Find pair that makes sense for BP
+            for (let i=0; i<nums.length-1; i++) {
+                if (nums[i] >= 90 && nums[i] <= 200 &&
+                    nums[i+1] >= 50 && nums[i+1] <= 130 &&
+                    nums[i] > nums[i+1]) {
+                    sys = nums[i];
+                    dia = nums[i+1];
+                    break;
+                }
+            }
+        }
+    }
+
+    // Pattern 3: Pulse (look for 2-digit number 40-180)
+    const pulseNums = [...clean.matchAll(/\b(\d{2,3})\b/g)]
+        .map(m => parseInt(m[1]))
+        .filter(n => n >= 40 && n <= 180);
+
+    if (pulseNums.length > 0 && sys && dia) {
+        // Pick number that's different from sys/dia
+        pulse = pulseNums.find(n => n !== sys && n !== dia) || null;
+    } else if (pulseNums.length > 0) {
+        pulse = pulseNums[0];
+    }
+
+    // Validate
+    if (sys  && (sys  < 60  || sys  > 250)) sys   = null;
+    if (dia  && (dia  < 40  || dia  > 150)) dia   = null;
+    if (pulse && (pulse < 30 || pulse > 220)) pulse = null;
+
+    return { sys, dia, pulse };
+}
+
+function applyOCRValues() {
+    const sys   = document.getElementById('ocrSys').value;
+    const dia   = document.getElementById('ocrDia').value;
+    const pulse = document.getElementById('ocrPulse').value;
+
+    if (sys)   document.getElementById('systolic').value  = sys;
+    if (dia)   document.getElementById('diastolic').value = dia;
+    if (pulse) document.getElementById('pulse').value     = pulse;
+
+    updateLiveBP();
+    showToast('✅ ใส่ค่าลงแบบฟอร์มแล้ว!', 'success');
+
+    // Scroll to form
+    document.getElementById('systolic').scrollIntoView({behavior:'smooth', block:'center'});
 }
 
 // ==================== MOOD ====================
 function selectMood(mood) {
     selectedMood = mood;
     document.querySelectorAll('.mood-btn').forEach(b =>
-        b.classList.toggle('selected', b.dataset.mood === mood));
+        b.classList.toggle('selected', b.dataset.mood===mood));
 }
 
 // ==================== PHOTO ====================
 function handlePhoto(e) {
     const file = e.target.files[0];
     if (!file) return;
-    // Resize before storing
     const reader = new FileReader();
     reader.onload = ev => {
         const img = new Image();
         img.onload = () => {
             const canvas = document.createElement('canvas');
             const MAX = 800;
-            let w = img.width, h = img.height;
-            if (w > MAX) { h = h * MAX / w; w = MAX; }
-            if (h > MAX) { w = w * MAX / h; h = MAX; }
-            canvas.width = w; canvas.height = h;
-            canvas.getContext('2d').drawImage(img, 0, 0, w, h);
-            photoBase64 = canvas.toDataURL('image/jpeg', 0.7);
+            let w=img.width, h=img.height;
+            if (w>MAX){h=h*MAX/w;w=MAX;}
+            if (h>MAX){w=w*MAX/h;h=MAX;}
+            canvas.width=w; canvas.height=h;
+            canvas.getContext('2d').drawImage(img,0,0,w,h);
+            photoBase64 = canvas.toDataURL('image/jpeg',0.7);
             document.getElementById('photoPreview').src = photoBase64;
             document.getElementById('photoPreview').style.display = 'block';
             document.getElementById('photoPlaceholder').style.display = 'none';
@@ -916,7 +693,6 @@ function handlePhoto(e) {
     };
     reader.readAsDataURL(file);
 }
-
 function clearPhoto() {
     photoBase64 = '';
     document.getElementById('photoInput').value = '';
@@ -925,28 +701,27 @@ function clearPhoto() {
     document.getElementById('clearPhotoBtn').style.display = 'none';
 }
 
-// ==================== LIVE BP PREVIEW ====================
+// ==================== LIVE BP ====================
 function addBPLiveListener() {
-    ['systolic','diastolic'].forEach(id => {
-        document.getElementById(id).addEventListener('input', updateLiveBP);
-    });
+    ['systolic','diastolic'].forEach(id =>
+        document.getElementById(id).addEventListener('input', updateLiveBP));
 }
 function updateLiveBP() {
-    const sys = parseFloat(document.getElementById('systolic').value);
-    const dia = parseFloat(document.getElementById('diastolic').value);
-    const wrap  = document.getElementById('bpLivePreview');
-    const badge = document.getElementById('bpLiveBadge');
+    const sys  = parseFloat(document.getElementById('systolic').value);
+    const dia  = parseFloat(document.getElementById('diastolic').value);
+    const wrap = document.getElementById('bpLivePreview');
+    const badge= document.getElementById('bpLiveBadge');
     if (sys && dia) {
-        const st = getBPStatus(sys, dia);
-        badge.textContent  = st.label;
-        badge.className    = `bp-badge ${st.cls}`;
+        const st = getBPStatus(sys,dia);
+        badge.textContent = st.label;
+        badge.className   = `bp-badge ${st.cls}`;
         wrap.style.display = 'block';
     } else {
         wrap.style.display = 'none';
     }
 }
 
-// ==================== SAVE RECORD ====================
+// ==================== SAVE ====================
 function saveRecord() {
     const sys      = parseFloat(document.getElementById('systolic').value);
     const dia      = parseFloat(document.getElementById('diastolic').value);
@@ -955,350 +730,226 @@ function saveRecord() {
     const datetime = document.getElementById('recordDatetime').value;
     const note     = document.getElementById('noteInput').value.trim();
 
-    if (!datetime) { showToast('กรุณาเลือกวันที่และเวลา', 'error'); return; }
-    if ((!sys || !dia) && !weight) {
-        showToast('กรุณากรอกความดันหรือน้ำหนักอย่างน้อยหนึ่งค่า', 'error'); return;
-    }
-    if (sys  && (sys  < 60  || sys  > 250)) { showToast('ค่า Systolic ไม่ถูกต้อง (60–250)',  'error'); return; }
-    if (dia  && (dia  < 40  || dia  > 150)) { showToast('ค่า Diastolic ไม่ถูกต้อง (40–150)', 'error'); return; }
-    if (pulse && (pulse < 30 || pulse > 220)) { showToast('ค่าชีพจรไม่ถูกต้อง (30–220)',      'error'); return; }
+    if (!datetime) { showToast('กรุณาเลือกวันที่และเวลา','error'); return; }
+    if ((!sys||!dia) && !weight) { showToast('กรุณากรอกความดันหรือน้ำหนักอย่างน้อยหนึ่งค่า','error'); return; }
+    if (sys && (sys<60||sys>250))   { showToast('ค่า Systolic ไม่ถูกต้อง','error'); return; }
+    if (dia && (dia<40||dia>150))   { showToast('ค่า Diastolic ไม่ถูกต้อง','error'); return; }
 
-    const record = {
-        id: Date.now(),
-        datetime,
-        systolic:  sys   || null,
-        diastolic: dia   || null,
-        pulse:     pulse || null,
-        weight:    weight|| null,
-        mood:      selectedMood,
-        note,
-        photo:     photoBase64
-    };
-
-    records.unshift(record);
+    records.unshift({ id:Date.now(), datetime, systolic:sys||null, diastolic:dia||null,
+        pulse:pulse||null, weight:weight||null, mood:selectedMood, note, photo:photoBase64 });
     saveToStorage();
     resetForm();
-    showToast('✅ บันทึกข้อมูลสำเร็จ!', 'success');
+    showToast('✅ บันทึกข้อมูลสำเร็จ!','success');
     renderDashboard();
 }
 
 function resetForm() {
-    ['systolic','diastolic','pulse','weight'].forEach(id =>
-        document.getElementById(id).value = '');
-    document.getElementById('noteInput').value = '';
-    document.getElementById('bpLivePreview').style.display = 'none';
-    selectedMood = '';
-    document.querySelectorAll('.mood-btn').forEach(b => b.classList.remove('selected'));
+    ['systolic','diastolic','pulse','weight'].forEach(id => document.getElementById(id).value='');
+    document.getElementById('noteInput').value='';
+    document.getElementById('bpLivePreview').style.display='none';
+    selectedMood='';
+    document.querySelectorAll('.mood-btn').forEach(b=>b.classList.remove('selected'));
     clearPhoto();
     setDefaultDatetime();
 }
 
 // ==================== DASHBOARD ====================
 function renderDashboard() {
-    const cutoff7 = new Date();
-    cutoff7.setDate(cutoff7.getDate() - 7);
-    cutoff7.setHours(0,0,0,0);
-    const recent = records.filter(r => new Date(r.datetime) >= cutoff7);
+    const cutoff = new Date(); cutoff.setDate(cutoff.getDate()-7); cutoff.setHours(0,0,0,0);
+    const recent = records.filter(r=>new Date(r.datetime)>=cutoff);
 
-    // Latest
-    const latBP    = records.find(r => r.systolic && r.diastolic);
-    const latWt    = records.find(r => r.weight);
-    const latPulse = records.find(r => r.pulse);
+    const latBP    = records.find(r=>r.systolic&&r.diastolic);
+    const latWt    = records.find(r=>r.weight);
+    const latPulse = records.find(r=>r.pulse);
 
     if (latBP) {
         document.getElementById('latestBP').textContent = `${latBP.systolic}/${latBP.diastolic}`;
-        const st = getBPStatus(latBP.systolic, latBP.diastolic);
+        const st = getBPStatus(latBP.systolic,latBP.diastolic);
         document.getElementById('bpStatus').innerHTML = `<div class="bp-badge ${st.cls}">${st.label}</div>`;
-        if (st.cls === 'bp-high') {
-            document.getElementById('bpAlertBox').innerHTML =
-                `<div class="alert alert-warning">⚠️ <strong>ความดันสูงกว่าปกติ!</strong> ควรพบแพทย์หากพบค่าสูงต่อเนื่อง</div>`;
-        } else { document.getElementById('bpAlertBox').innerHTML = ''; }
+        document.getElementById('bpAlertBox').innerHTML = st.cls==='bp-high'
+            ? `<div class="alert alert-warning">⚠️ <strong>ความดันสูงกว่าปกติ!</strong> ควรพบแพทย์</div>`:'';
     }
-
     if (latWt) {
         document.getElementById('latestWeight').textContent = `${latWt.weight} kg`;
         const h = parseFloat(settings.height);
-        if (h) {
-            const bmi = latWt.weight / ((h/100)**2);
-            document.getElementById('bmiDisplay').textContent = `BMI: ${bmi.toFixed(1)}`;
-            showBMICard(bmi, latWt.weight);
-        }
+        if (h) document.getElementById('bmiDisplay').textContent = `BMI: ${(latWt.weight/((h/100)**2)).toFixed(1)}`;
     }
-
     if (latPulse) document.getElementById('latestPulse').textContent = latPulse.pulse;
     document.getElementById('totalRecords').textContent = records.length;
 
-    // Averages
-    const bpR   = recent.filter(r => r.systolic && r.diastolic);
-    const wtR   = recent.filter(r => r.weight);
-    const puR   = recent.filter(r => r.pulse);
-    const avg   = (arr, key) => arr.length ? (arr.reduce((s,r)=>s+r[key],0)/arr.length) : null;
+    const avg = (arr,key) => arr.length ? arr.reduce((s,r)=>s+r[key],0)/arr.length : null;
+    const bpR=recent.filter(r=>r.systolic&&r.diastolic), wtR=recent.filter(r=>r.weight), puR=recent.filter(r=>r.pulse);
 
-    const avgSys   = avg(bpR, 'systolic');
-    const avgDia   = avg(bpR, 'diastolic');
-    const avgWt    = avg(wtR, 'weight');
-    const avgPulse = avg(puR, 'pulse');
-
-    document.getElementById('avgSys').textContent   = avgSys   ? `${Math.round(avgSys)} mmHg`          : '—';
-    document.getElementById('avgDia').textContent   = avgDia   ? `${Math.round(avgDia)} mmHg`          : '—';
-    document.getElementById('avgWt').textContent    = avgWt    ? `${avgWt.toFixed(1)} kg`              : '—';
-    document.getElementById('avgPulse').textContent = avgPulse ? `${Math.round(avgPulse)} bpm`         : '—';
+    document.getElementById('avgSys').textContent   = avg(bpR,'systolic')  ? `${Math.round(avg(bpR,'systolic'))} mmHg`       :'—';
+    document.getElementById('avgDia').textContent   = avg(bpR,'diastolic') ? `${Math.round(avg(bpR,'diastolic'))} mmHg`      :'—';
+    document.getElementById('avgWt').textContent    = avg(wtR,'weight')    ? `${avg(wtR,'weight').toFixed(1)} kg`             :'—';
+    document.getElementById('avgPulse').textContent = avg(puR,'pulse')     ? `${Math.round(avg(puR,'pulse'))} bpm`           :'—';
 
     renderCharts(recent);
 }
 
-function showBMICard(bmi, weight) {
-    const card = document.getElementById('bmiCard');
-    card.style.display = 'block';
-    document.getElementById('bmiValue').textContent = bmi.toFixed(1);
-
-    let cat, emoji, pct;
-    if (bmi < 18.5)       { cat='ต่ำกว่าเกณฑ์'; emoji='🟦'; pct=Math.max(2,(bmi/18.5)*20); }
-    else if (bmi < 23)    { cat='ปกติ ✅';        emoji='🟩'; pct=20+(bmi-18.5)/(23-18.5)*25; }
-    else if (bmi < 25)    { cat='น้ำหนักเกิน ⚠️'; emoji='🟨'; pct=45+(bmi-23)/2*20; }
-    else                  { cat='อ้วน 🔴';          emoji='🟥'; pct=Math.min(98,65+(bmi-25)/10*35); }
-
-    document.getElementById('bmiCategory').textContent = cat;
-    document.getElementById('bmiEmoji').textContent    = emoji;
-    document.getElementById('bmiMarker').style.left    = `${pct}%`;
-}
-
-// ==================== BP STATUS ====================
-function getBPStatus(sys, dia) {
-    if (sys < 90 || dia < 60)          return { cls:'bp-low',      label:'⬇️ ต่ำ' };
-    if (sys < 120 && dia < 80)         return { cls:'bp-normal',   label:'✅ ปกติ' };
-    if (sys < 130 && dia < 80)         return { cls:'bp-elevated', label:'⚠️ สูงขั้นต้น' };
-    if (sys < 140 && dia < 90)         return { cls:'bp-elevated', label:'🟡 Stage 1' };
-    return                                    { cls:'bp-high',     label:'🔴 Stage 2' };
+function getBPStatus(sys,dia) {
+    if (sys<90||dia<60)       return {cls:'bp-low',     label:'⬇️ ต่ำ'};
+    if (sys<120&&dia<80)      return {cls:'bp-normal',  label:'✅ ปกติ'};
+    if (sys<130&&dia<80)      return {cls:'bp-elevated',label:'⚠️ สูงขั้นต้น'};
+    if (sys<140&&dia<90)      return {cls:'bp-elevated',label:'🟡 Stage 1'};
+    return                          {cls:'bp-high',     label:'🔴 Stage 2'};
 }
 
 // ==================== CHARTS ====================
-function get7DaysMeta() {
-    const labels=[], dates=[];
-    for (let i=6; i>=0; i--) {
-        const d = new Date(); d.setDate(d.getDate()-i); d.setHours(0,0,0,0);
-        labels.push(`${d.getDate()}/${d.getMonth()+1}`);
-        dates.push(new Date(d));
+function get7Days() {
+    const labels=[],dates=[];
+    for(let i=6;i>=0;i--){
+        const d=new Date();d.setDate(d.getDate()-i);d.setHours(0,0,0,0);
+        labels.push(`${d.getDate()}/${d.getMonth()+1}`);dates.push(new Date(d));
     }
-    return {labels, dates};
+    return {labels,dates};
 }
-
-function dayAvg(data, date, key) {
-    const next = new Date(date); next.setDate(next.getDate()+1);
-    const dr = data.filter(r => { const rd=new Date(r.datetime); return rd>=date && rd<next && r[key]; });
-    return dr.length ? dr.reduce((s,r)=>s+r[key],0)/dr.length : null;
+function dayAvg(data,date,key) {
+    const next=new Date(date);next.setDate(next.getDate()+1);
+    const dr=data.filter(r=>{const rd=new Date(r.datetime);return rd>=date&&rd<next&&r[key];});
+    return dr.length?dr.reduce((s,r)=>s+r[key],0)/dr.length:null;
 }
-
 function renderCharts(recent) {
-    const {labels, dates} = get7DaysMeta();
-    const sysD  = dates.map(d => { const v=dayAvg(recent,d,'systolic');  return v?Math.round(v):null; });
-    const diaD  = dates.map(d => { const v=dayAvg(recent,d,'diastolic'); return v?Math.round(v):null; });
-    const wtD   = dates.map(d => { const v=dayAvg(recent,d,'weight');    return v?parseFloat(v.toFixed(1)):null; });
+    const {labels,dates}=get7Days();
+    const sysD=dates.map(d=>{const v=dayAvg(recent,d,'systolic'); return v?Math.round(v):null;});
+    const diaD=dates.map(d=>{const v=dayAvg(recent,d,'diastolic');return v?Math.round(v):null;});
+    const wtD =dates.map(d=>{const v=dayAvg(recent,d,'weight');   return v?parseFloat(v.toFixed(1)):null;});
 
-    const chartDefaults = {
-        responsive:true, maintainAspectRatio:false,
-        plugins:{ legend:{ labels:{ color:'#475569', font:{size:11}, boxWidth:12 } } },
-        scales:{
-            x:{ ticks:{color:'#94a3b8',font:{size:10}}, grid:{color:'rgba(0,0,0,0.04)'} },
-            y:{ ticks:{color:'#94a3b8',font:{size:10}}, grid:{color:'rgba(0,0,0,0.06)'} }
-        }
-    };
+    const base={responsive:true,maintainAspectRatio:false,
+        plugins:{legend:{labels:{color:'#475569',font:{size:11},boxWidth:12}}},
+        scales:{x:{ticks:{color:'#94a3b8',font:{size:10}},grid:{color:'rgba(0,0,0,0.04)'}},
+                y:{ticks:{color:'#94a3b8',font:{size:10}},grid:{color:'rgba(0,0,0,0.06)'}}}};
 
-    // BP Chart
-    const bpCtx = document.getElementById('bpChart').getContext('2d');
-    if (bpChartInst) bpChartInst.destroy();
-    bpChartInst = new Chart(bpCtx, {
-        type:'line',
-        data:{ labels, datasets:[
-            { label:'Systolic',  data:sysD, borderColor:'#ef4444', backgroundColor:'rgba(239,68,68,0.08)',
-              pointBackgroundColor:'#ef4444', pointRadius:4, tension:0.35, fill:true, spanGaps:true },
-            { label:'Diastolic', data:diaD, borderColor:'#6366f1', backgroundColor:'rgba(99,102,241,0.08)',
-              pointBackgroundColor:'#6366f1', pointRadius:4, tension:0.35, fill:true, spanGaps:true }
-        ]},
-        options:{ ...chartDefaults, scales:{
-            ...chartDefaults.scales,
-            y:{ ...chartDefaults.scales.y, min:50,
-                ticks:{ color:'#94a3b8', font:{size:10},
-                  callback: v => v+'mmHg' } }
-        }}
-    });
+    const bpCtx=document.getElementById('bpChart').getContext('2d');
+    if(bpChartInst)bpChartInst.destroy();
+    bpChartInst=new Chart(bpCtx,{type:'line',data:{labels,datasets:[
+        {label:'Systolic',data:sysD,borderColor:'#ef4444',backgroundColor:'rgba(239,68,68,0.08)',pointBackgroundColor:'#ef4444',pointRadius:4,tension:0.35,fill:true,spanGaps:true},
+        {label:'Diastolic',data:diaD,borderColor:'#6366f1',backgroundColor:'rgba(99,102,241,0.08)',pointBackgroundColor:'#6366f1',pointRadius:4,tension:0.35,fill:true,spanGaps:true}
+    ]},options:{...base,scales:{...base.scales,y:{...base.scales.y,min:50}}}});
 
-    // Weight Chart
-    const wtCtx = document.getElementById('weightChart').getContext('2d');
-    if (wtChartInst) wtChartInst.destroy();
-    wtChartInst = new Chart(wtCtx, {
-        type:'bar',
-        data:{ labels, datasets:[{
-            label:'น้ำหนัก (kg)', data:wtD,
-            backgroundColor:'rgba(5,150,105,0.75)',
-            borderColor:'#059669', borderRadius:7, borderWidth:1.5
-        }]},
-        options:{ ...chartDefaults, scales:{
-            ...chartDefaults.scales,
-            y:{ ...chartDefaults.scales.y,
-                ticks:{ color:'#94a3b8', font:{size:10},
-                  callback: v => v+'kg' } }
-        }}
-    });
+    const wtCtx=document.getElementById('weightChart').getContext('2d');
+    if(wtChartInst)wtChartInst.destroy();
+    wtChartInst=new Chart(wtCtx,{type:'bar',data:{labels,datasets:[{
+        label:'น้ำหนัก (kg)',data:wtD,backgroundColor:'rgba(5,150,105,0.75)',
+        borderColor:'#059669',borderRadius:7,borderWidth:1.5
+    }]},options:base});
 }
 
 // ==================== HISTORY ====================
-function setFilter(days, btn) {
-    currentFilter = days;
-    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+function setFilter(days,btn) {
+    currentFilter=days;
+    document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active'));
     btn.classList.add('active');
     renderHistory();
 }
-
 function renderHistory() {
-    const now    = new Date();
-    let filtered;
-    if (currentFilter === 0) {
-        filtered = records;
-    } else {
-        const cutoff = new Date(now);
-        cutoff.setDate(cutoff.getDate() - currentFilter);
-        cutoff.setHours(0,0,0,0);
-        filtered = records.filter(r => new Date(r.datetime) >= cutoff);
+    const now=new Date();
+    const filtered=currentFilter===0?records:records.filter(r=>{
+        const c=new Date(now);c.setDate(c.getDate()-currentFilter);c.setHours(0,0,0,0);
+        return new Date(r.datetime)>=c;
+    });
+    document.getElementById('historyCountBadge').innerHTML=
+        `📋 แสดง <strong>${filtered.length}</strong> รายการ ${currentFilter?`(${currentFilter} วันย้อนหลัง)`:'(ทั้งหมด)'}`;
+    const list=document.getElementById('historyList');
+    if(!filtered.length){
+        list.innerHTML=`<div class="empty-state"><div class="icon">🔍</div><p>ไม่พบข้อมูลในช่วงนี้</p></div>`;return;
     }
-
-    document.getElementById('historyCountBadge').innerHTML =
-        `📋 แสดง <strong>${filtered.length}</strong> รายการ ${currentFilter ? `(${currentFilter} วันย้อนหลัง)` : '(ทั้งหมด)'}`;
-
-    const list = document.getElementById('historyList');
-    if (!filtered.length) {
-        list.innerHTML = `<div class="empty-state">
-            <div class="icon">🔍</div>
-            <p>ไม่พบข้อมูลในช่วงนี้<br>ลองเปลี่ยนตัวกรอง หรือเริ่มบันทึกข้อมูล</p>
-        </div>`;
-        return;
-    }
-
-    list.innerHTML = filtered.map(r => {
-        const dt   = new Date(r.datetime);
-        const date = `${dt.getDate()}/${dt.getMonth()+1}/${dt.getFullYear()+543}`;
-        const time = `${String(dt.getHours()).padStart(2,'0')}:${String(dt.getMinutes()).padStart(2,'0')} น.`;
-        const bpSt = (r.systolic && r.diastolic) ? getBPStatus(r.systolic, r.diastolic) : null;
-
+    list.innerHTML=filtered.map(r=>{
+        const dt=new Date(r.datetime);
+        const date=`${dt.getDate()}/${dt.getMonth()+1}/${dt.getFullYear()+543}`;
+        const time=`${String(dt.getHours()).padStart(2,'0')}:${String(dt.getMinutes()).padStart(2,'0')} น.`;
+        const bpSt=(r.systolic&&r.diastolic)?getBPStatus(r.systolic,r.diastolic):null;
         return `<div class="history-item">
             <div class="history-header">
                 <div>
                     <div class="history-title">${date} ${time} ${r.mood||''}</div>
-                    ${bpSt ? `<div class="bp-badge ${bpSt.cls}">${bpSt.label}</div>` : ''}
+                    ${bpSt?`<div class="bp-badge ${bpSt.cls}">${bpSt.label}</div>`:''}
                 </div>
                 <button class="delete-btn" onclick="deleteRecord(${r.id})">🗑️ ลบ</button>
             </div>
             <div class="history-stats">
-                <div class="history-stat">
-                    <div class="history-stat-val" style="color:#ef4444">
-                        ${r.systolic&&r.diastolic ? `${r.systolic}/${r.diastolic}` : '—'}</div>
-                    <div class="history-stat-lbl">mmHg</div>
-                </div>
-                <div class="history-stat">
-                    <div class="history-stat-val" style="color:#059669">${r.weight||'—'}</div>
-                    <div class="history-stat-lbl">kg</div>
-                </div>
-                <div class="history-stat">
-                    <div class="history-stat-val" style="color:#6366f1">${r.pulse||'—'}</div>
-                    <div class="history-stat-lbl">bpm</div>
-                </div>
+                <div class="history-stat"><div class="history-stat-val" style="color:#ef4444">${r.systolic&&r.diastolic?`${r.systolic}/${r.diastolic}`:'—'}</div><div class="history-stat-lbl">mmHg</div></div>
+                <div class="history-stat"><div class="history-stat-val" style="color:#059669">${r.weight||'—'}</div><div class="history-stat-lbl">kg</div></div>
+                <div class="history-stat"><div class="history-stat-val" style="color:#6366f1">${r.pulse||'—'}</div><div class="history-stat-lbl">bpm</div></div>
             </div>
-            ${r.photo ? `<img src="${r.photo}" class="history-photo" alt="photo" loading="lazy">` : ''}
-            ${r.note  ? `<div class="history-note">💬 ${r.note}</div>` : ''}
+            ${r.photo?`<img src="${r.photo}" class="history-photo" loading="lazy" alt="photo">`:''}
+            ${r.note?`<div class="history-note">💬 ${r.note}</div>`:''}
         </div>`;
     }).join('');
 }
-
 function deleteRecord(id) {
-    if (!confirm('ลบรายการนี้?')) return;
-    records = records.filter(r => r.id !== id);
-    saveToStorage();
-    renderHistory();
-    renderDashboard();
+    if(!confirm('ลบรายการนี้?'))return;
+    records=records.filter(r=>r.id!==id);
+    saveToStorage();renderHistory();renderDashboard();
     showToast('ลบรายการแล้ว');
 }
 
-// ==================== EXPORT CSV ====================
+// ==================== EXPORT ====================
 function exportCSV() {
-    if (!records.length) { showToast('ไม่มีข้อมูลให้ Export', 'error'); return; }
-    const headers = ['วันที่','เวลา','Systolic','Diastolic','ชีพจร(bpm)','น้ำหนัก(kg)','อารมณ์','บันทึก'];
-    const rows = records.map(r => {
-        const dt = new Date(r.datetime);
-        return [
-            `${dt.getDate()}/${dt.getMonth()+1}/${dt.getFullYear()}`,
+    if(!records.length){showToast('ไม่มีข้อมูล','error');return;}
+    const headers=['วันที่','เวลา','Systolic','Diastolic','ชีพจร','น้ำหนัก','อารมณ์','บันทึก'];
+    const rows=records.map(r=>{
+        const dt=new Date(r.datetime);
+        return [`${dt.getDate()}/${dt.getMonth()+1}/${dt.getFullYear()}`,
             `${String(dt.getHours()).padStart(2,'0')}:${String(dt.getMinutes()).padStart(2,'0')}`,
-            r.systolic||'', r.diastolic||'', r.pulse||'', r.weight||'',
-            r.mood||'', `"${(r.note||'').replace(/"/g,'""')}"`
-        ].join(',');
+            r.systolic||'',r.diastolic||'',r.pulse||'',r.weight||'',r.mood||'',
+            `"${(r.note||'').replace(/"/g,'""')}"`].join(',');
     });
-    const csv  = '\ufeff' + [headers.join(','), ...rows].join('\r\n');
-    const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
-    const url  = URL.createObjectURL(blob);
-    const a    = document.createElement('a');
-    a.href     = url;
-    a.download = `health_${new Date().toISOString().slice(0,10)}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
-    showToast('📥 Export CSV สำเร็จ!', 'success');
+    const csv='\ufeff'+[headers.join(','),...rows].join('\r\n');
+    const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');a.href=url;
+    a.download=`health_${new Date().toISOString().slice(0,10)}.csv`;a.click();
+    URL.revokeObjectURL(url);showToast('📥 Export สำเร็จ!','success');
 }
-
-// ==================== CLEAR ALL ====================
 function confirmClearAll() {
-    if (!records.length) { showToast('ไม่มีข้อมูล', 'error'); return; }
-    if (confirm(`⚠️ ยืนยันลบข้อมูลทั้งหมด ${records.length} รายการ?\nไม่สามารถกู้คืนได้`)) {
-        records = [];
-        saveToStorage();
-        renderDashboard();
-        renderHistory();
-        showToast('🗑️ ลบข้อมูลทั้งหมดแล้ว');
+    if(!records.length){showToast('ไม่มีข้อมูล','error');return;}
+    if(confirm(`⚠️ ยืนยันลบข้อมูลทั้งหมด ${records.length} รายการ?`)){
+        records=[];saveToStorage();renderDashboard();renderHistory();
+        showToast('🗑️ ลบทั้งหมดแล้ว');
     }
 }
 
 // ==================== SETTINGS ====================
 function loadSettingsUI() {
-    document.getElementById('settingName').value   = settings.name   || '';
-    document.getElementById('settingAge').value    = settings.age    || '';
-    document.getElementById('settingHeight').value = settings.height || '';
+    document.getElementById('settingName').value  =settings.name  ||'';
+    document.getElementById('settingAge').value   =settings.age   ||'';
+    document.getElementById('settingHeight').value=settings.height||'';
 }
-
 function saveSettings() {
-    settings.name   = document.getElementById('settingName').value;
-    settings.age    = document.getElementById('settingAge').value;
-    settings.height = document.getElementById('settingHeight').value;
-    localStorage.setItem('healthSettings', JSON.stringify(settings));
-    renderDashboard();
-    showToast('✅ บันทึกการตั้งค่าแล้ว', 'success');
+    settings.name  =document.getElementById('settingName').value;
+    settings.age   =document.getElementById('settingAge').value;
+    settings.height=document.getElementById('settingHeight').value;
+    localStorage.setItem('healthSettings',JSON.stringify(settings));
+    renderDashboard();showToast('✅ บันทึกการตั้งค่าแล้ว','success');
 }
-
 function renderSettingsStats() {
-    document.getElementById('sumTotal').textContent = `${records.length} รายการ`;
-    if (records.length) {
-        const sorted = [...records].sort((a,b) => new Date(a.datetime)-new Date(b.datetime));
-        const fmt = d => `${d.getDate()}/${d.getMonth()+1}/${d.getFullYear()+543}`;
-        document.getElementById('sumFirst').textContent = fmt(new Date(sorted[0].datetime));
-        document.getElementById('sumLast').textContent  = fmt(new Date(sorted[sorted.length-1].datetime));
+    document.getElementById('sumTotal').textContent=`${records.length} รายการ`;
+    if(records.length){
+        const sorted=[...records].sort((a,b)=>new Date(a.datetime)-new Date(b.datetime));
+        const fmt=d=>`${d.getDate()}/${d.getMonth()+1}/${d.getFullYear()+543}`;
+        document.getElementById('sumFirst').textContent=fmt(new Date(sorted[0].datetime));
+        document.getElementById('sumLast').textContent =fmt(new Date(sorted[sorted.length-1].datetime));
     }
 }
 
 // ==================== STORAGE ====================
 function saveToStorage() {
-    try {
-        localStorage.setItem('healthRecords', JSON.stringify(records));
-    } catch(e) {
-        // Trim old photos if storage full
-        const trimmed = records.map((r,i) => i > 10 ? {...r, photo:''} : r);
-        localStorage.setItem('healthRecords', JSON.stringify(trimmed));
-        showToast('⚠️ พื้นที่เต็ม ภาพเก่าถูกลบอัตโนมัติ', 'error');
+    try { localStorage.setItem('healthRecords',JSON.stringify(records)); }
+    catch(e) {
+        const trimmed=records.map((r,i)=>i>10?{...r,photo:''}:r);
+        localStorage.setItem('healthRecords',JSON.stringify(trimmed));
+        showToast('⚠️ พื้นที่เต็ม ภาพเก่าถูกลบ','error');
     }
 }
 
 // ==================== TOAST ====================
-function showToast(msg, type='') {
-    const t = document.getElementById('toast');
-    t.textContent = msg;
-    t.className   = `toast ${type}`;
+function showToast(msg,type='') {
+    const t=document.getElementById('toast');
+    t.textContent=msg; t.className=`toast ${type}`;
     t.classList.add('show');
-    setTimeout(() => t.classList.remove('show'), 2800);
+    setTimeout(()=>t.classList.remove('show'),2800);
 }
 </script>
 </body>
